@@ -1,0 +1,81 @@
+@model Leo.MonetaryCredit.Models.UserAccountViewModel
+
+<div class="page account-page monetary-credit-account">
+    <div class="page-title">
+        <h1>我的余额</h1>
+    </div>
+    <div class="page-body">
+        <div class="account-info-box">
+            <div class="info-row">
+                <span class="label">当前余额：</span>
+                <span class="value balance">¥ @Model.Balance.ToString("F2")</span>
+            </div>
+            <div class="info-row">
+                <span class="label">购物积分：</span>
+                <span class="value">¥ @Model.ShoppingCredits.ToString("F2")</span>
+            </div>
+            <div class="info-row">
+                <span class="label">销售积分：</span>
+                <span class="value">¥ @Model.SalesCredits.ToString("F2")</span>
+            </div>
+            <div class="info-row">
+                <span class="label">活动积分：</span>
+                <span class="value">¥ @Model.ActivityCredits.ToString("F2")</span>
+            </div>
+            <div class="info-row">
+                <span class="label">累计充值：</span>
+                <span class="value">¥ @Model.TotalRecharged.ToString("F2")</span>
+            </div>
+            @if (Model.RemainingRechargeQuota >= 0)
+            {
+                <div class="info-row">
+                    <span class="label">剩余充值额度：</span>
+                    <span class="value">¥ @Model.RemainingRechargeQuota.ToString("F2")</span>
+                </div>
+            }
+        </div>
+
+        <div class="recharge-section">
+            <h3>充值</h3>
+            <div class="recharge-form">
+                <input type="number" id="rechargeAmount" placeholder="请输入充值金额" step="0.01" min="0.01" class="form-control"/>
+                <button type="button" id="rechargeBtn" class="btn btn-primary">充值</button>
+                <span id="rechargeMessage" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/MonetaryCredit/Transactions" class="btn">查看交易记录</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+    <script>
+        document.getElementById('rechargeBtn').addEventListener('click', function() {
+            var amount = parseFloat(document.getElementById('rechargeAmount').value);
+            var msgEl = document.getElementById('rechargeMessage');
+
+            if (!amount || amount <= 0) {
+                msgEl.textContent = '请输入有效的充值金额';
+                return;
+            }
+
+            msgEl.textContent = '处理中...';
+            msgEl.className = 'text-info';
+
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/MonetaryCredit/Recharge';
+
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'amount';
+            input.value = amount;
+            form.appendChild(input);
+
+            document.body.appendChild(form);
+            form.submit();
+        });
+    </script>
+}

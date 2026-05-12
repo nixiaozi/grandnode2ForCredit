@@ -1,0 +1,8 @@
+@{
+    Layout = "";
+}
+@model Leo.MonetaryCredit.Controllers.PaymentInfoModel
+<div>
+    <p><strong>当前余额：@Model.Balance.ToString("F2") 元</strong></p>
+    <p>使用余额支付订单。如果余额不足，支付将失败。</p>
+</div>

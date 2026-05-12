@@ -1,0 +1,121 @@
+@using Leo.MonetaryCredit.Domain
+@model List<Leo.MonetaryCredit.Models.RechargeListModel>
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+<input id="active-menu-item" type="hidden" value="/Admin/MonetaryCredit/RechargeList"/>
+
+<div class="content-header clearfix">
+    <h1 class="pull-left">
+        充值管理
+    </h1>
+    <div class="pull-right">
+        <a asp-controller="MonetaryCredit" asp-action="CreateRecharge" class="btn green">
+            <i class="fa fa-plus"></i> 创建充值
+        </a>
+        <a asp-controller="MonetaryCredit" asp-action="SystemAccount" class="btn bg-blue">
+            <i class="fa fa-bank"></i> 系统账户
+        </a>
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                <tr>
+                    <th>客户</th>
+                    <th>金额 (元)</th>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th>创建人</th>
+                    <th>创建时间</th>
+                    <th>完成时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.CustomerName</td>
+                        <td>@item.Amount.ToString("F2")</td>
+                        <td>@item.RechargeTypeName</td>
+                        <td>
+                            <span class="label label-@(item.Status == RechargeStatus.AdminApproved ? "success" :
+                                item.Status == RechargeStatus.Rejected ? "danger" :
+                                item.Status == RechargeStatus.OperatorApproved ? "warning" : "info")">
+                                @item.StatusName
+                            </span>
+                        </td>
+                        <td>@item.CreatedByOperatorName</td>
+                        <td>@item.CreatedOnUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            @(item.CompletedOnUtc.HasValue ? item.CompletedOnUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-")
+                        </td>
+                        <td>
+                            @if (item.Status == RechargeStatus.Pending)
+                            {
+                                <form asp-action="OperatorApprove" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm green" onclick="return confirm('确认审批通过？')">操作员审批</button>
+                                </form>
+                                <button type="button" class="btn btn-sm red" onclick="showRejectModal('@item.Id')">拒绝</button>
+                            }
+                            else if (item.Status == RechargeStatus.OperatorApproved)
+                            {
+                                <form asp-action="AdminApprove" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm green" onclick="return confirm('确认审批通过？充值将立即生效。')">管理员审批</button>
+                                </form>
+                                <button type="button" class="btn btn-sm red" onclick="showRejectModal('@item.Id')">拒绝</button>
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                            @if (!string.IsNullOrEmpty(item.RejectionReason))
+                            {
+                                <br/><small class="text-danger">@item.RejectionReason</small>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">拒绝充值</h4>
+            </div>
+            <form asp-action="Reject" method="post">
+                <div class="modal-body">
+                    <input type="hidden" id="rejectId" name="id" value=""/>
+                    <div class="form-group">
+                        <label>拒绝原因</label>
+                        <textarea name="reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn default" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn red">确认拒绝</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showRejectModal(id) {
+        document.getElementById('rejectId').value = id;
+        $('#rejectModal').modal('show');
+    }
+</script>

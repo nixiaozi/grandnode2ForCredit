@@ -1,0 +1,41 @@
+@model Leo.MonetaryCredit.Domain.SystemAccount
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+<input id="active-menu-item" type="hidden" value="/Admin/MonetaryCredit/RechargeList"/>
+
+<h1>系统账户</h1>
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <div class="form-horizontal">
+            <div class="form-body">
+                <div class="form-group">
+                    <div class="col-md-3 col-sm-3 text-right">
+                        <label class="control-label">系统账户余额 (元)</label>
+                    </div>
+                    <div class="col-md-9 col-sm-9">
+                        <p class="form-control-static" style="font-size: 24px; font-weight: bold; color: #e7505a;">
+                            @Model.Balance.ToString("F2") 元
+                        </p>
+                        <span class="help-block">此账户累计收取的交易手续费</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-heading">说明</div>
+    <div class="panel-body">
+        <ul>
+            <li>系统账户余额来源于所有订单的交易手续费</li>
+            <li>默认交易费率为 <strong>0.2%</strong>，可在配置页面修改</li>
+            <li>每笔订单的卖家收款金额 = 订单金额 x (1 - 交易费率)</li>
+            <li>系统账户收取金额 = 订单金额 x 交易费率</li>
+        </ul>
+    </div>
+</div>

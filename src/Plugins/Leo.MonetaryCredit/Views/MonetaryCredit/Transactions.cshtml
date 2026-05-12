@@ -1,0 +1,47 @@
+@model List<Leo.MonetaryCredit.Models.CreditRecordViewModel>
+
+<div class="page account-page monetary-credit-transactions">
+    <div class="page-title">
+        <h1>交易记录</h1>
+    </div>
+    <div class="page-body">
+        <div class="section transaction-list">
+            @if (Model != null && Model.Count > 0)
+            {
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>类型</th>
+                        <th>金额</th>
+                        <th>说明</th>
+                        <th>余额</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var record in Model)
+                    {
+                        <tr>
+                            <td>@record.CreatedOnUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@record.TransactionTypeName</td>
+                            <td class="@(record.Amount > 0 ? "text-success" : "text-danger")">
+                                @(record.Amount > 0 ? "+" : "")@record.Amount.ToString("F2")
+                            </td>
+                            <td>@record.Description</td>
+                            <td>@record.BalanceAfter.ToString("F2")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>暂无交易记录。</p>
+            }
+        </div>
+
+        <div class="actions">
+            <a href="/MonetaryCredit/Account" class="btn">返回我的余额</a>
+        </div>
+    </div>
+</div>

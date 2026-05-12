@@ -375,3 +375,4 @@ src/Web/Grand.Web.Vendor/Plugins/*
 src/Web/Grand.Web.Vendor/Modules/*
 src/Web/Grand.Web.Vendor/App_Data/DataProtectionKeys/*
 src/Web/Grand.Web.Vendor/wwwroot/assets/images/thumbs/*.**
+.workbuddy/

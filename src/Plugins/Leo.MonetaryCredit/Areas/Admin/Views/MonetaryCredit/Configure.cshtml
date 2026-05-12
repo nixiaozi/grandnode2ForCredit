@@ -1,0 +1,69 @@
+@{
+    Layout = "_ConfigurePlugin";
+}
+@model Leo.MonetaryCredit.Models.ConfigurationModel
+@await Component.InvokeAsync("StoreScope")
+<input id="active-menu-item" type="hidden" value="/Admin/Payment/Methods"/>
+<form asp-controller="MonetaryCredit" asp-action="Configure" method="post">
+    <div class="form-horizontal">
+        <div class="form-body">
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <admin-label asp-for="DescriptionText" class="control-label"/>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-textarea asp-for="DescriptionText"></admin-textarea>
+                    <span asp-validation-for="DescriptionText"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <admin-label asp-for="MaxRechargeAmount" class="control-label"/>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="MaxRechargeAmount"/>
+                    <span asp-validation-for="MaxRechargeAmount"></span>
+                    <span class="help-block">0 表示不限制</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <admin-label asp-for="TransactionFeeRate" class="control-label"/>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="TransactionFeeRate"/>
+                    <span asp-validation-for="TransactionFeeRate"></span>
+                    <span class="help-block">默认 0.2，即 0.2%</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <admin-label asp-for="SkipPaymentInfo" class="control-label"/>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <label class="mt-checkbox mt-checkbox-outline control control-checkbox">
+                        <admin-input asp-for="SkipPaymentInfo"/>
+                        <div class="control__indicator"></div>
+                    </label>
+                    <span asp-validation-for="SkipPaymentInfo"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <admin-label asp-for="DisplayOrder" class="control-label"/>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="DisplayOrder"/>
+                    <span asp-validation-for="DisplayOrder"></span>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <div class="row">
+                <div class="offset-md-3 offset-sm-3 col-md-9 col-sm-9">
+                    <input type="submit" name="save" class="btn green" value="@Loc["Admin.Common.Save"]"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
