@@ -1,0 +1,84 @@
+@model Grand.Domain.IPagedList<Leo.MonetaryCredit.Domain.SystemAccountTransaction>
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+<input id="active-menu-item" type="hidden" value="/Admin/MonetaryCredit/SystemAccountTransactions"/>
+
+<div class="content-header clearfix">
+    <h1 class="pull-left">
+        系统账户 - 交易明细
+    </h1>
+    <div class="pull-right">
+        <a asp-controller="MonetaryCredit" asp-action="SystemAccount" class="btn bg-blue">
+            <i class="fa fa-bank"></i> 返回系统账户
+        </a>
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>类型</th>
+                    <th>金额（元）</th>
+                    <th>余额（元）</th>
+                    <th>关联订单</th>
+                    <th>说明</th>
+                </tr>
+                </thead>
+                <tbody>
+                @if (Model != null)
+                {
+                    foreach (var tx in Model)
+                    {
+                        <tr>
+                            <td>@tx.CreatedOnUtc.ToLocalTime()</td>
+                            <td>@tx.TransactionType</td>
+                            <td style="color: @(tx.Amount >= 0 ? "#5cb85c" : "#e7505a"); font-weight: bold;">
+                                @(tx.Amount >= 0 ? "+" : "")@tx.Amount.ToString("F2")
+                            </td>
+                            <td>@tx.BalanceAfter.ToString("F2")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(tx.OrderId))
+                                {
+                                    <a href="/Admin/Order/Edit/@tx.OrderId" target="_blank">@tx.OrderId.Substring(0, Math.Min(8, tx.OrderId.Length))...</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>@tx.Description</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model != null && Model.TotalPages > 1)
+        {
+            <div class="row">
+                <div class="col-sm-12 text-center">
+                    <nav>
+                        <ul class="pagination">
+                            @for (int i = 0; i < Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                    <a class="page-link" href="?page=@i">@(i + 1)</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                    <span class="text-muted">共 @Model.TotalCount 条记录</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>

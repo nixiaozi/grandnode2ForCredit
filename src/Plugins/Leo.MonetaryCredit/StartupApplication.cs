@@ -1,4 +1,5 @@
 using Grand.Business.Core.Interfaces.Checkout.Payments;
+using Grand.Business.Core.Interfaces.Cms;
 using Grand.Infrastructure;
 using Grand.Web.Common.Menu;
 using Leo.MonetaryCredit.Services;
@@ -32,6 +33,9 @@ public class StartupApplication : IStartupApplication
 
         // Register admin menu provider
         services.AddScoped<IAdminMenuProvider, AdminMenuProvider>();
+
+        // Register widget provider (adds "我的积分" link to account navigation)
+        services.AddScoped<IWidgetProvider, MonetaryCreditWidgetProvider>();
     }
 
     public int Priority => 10;

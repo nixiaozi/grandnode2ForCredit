@@ -1,38 +1,70 @@
 @model List<Leo.MonetaryCredit.Models.CreditRecordViewModel>
 
+@{
+    int currentPage = Context.Request.Query.TryGetValue("page", out var p) ? int.Parse(p!) : 0;
+    int pageSize = 20;
+}
+
 <div class="page account-page monetary-credit-transactions">
     <div class="page-title">
-        <h1>交易记录</h1>
+        <h1>交易明细</h1>
     </div>
     <div class="page-body">
         <div class="section transaction-list">
             @if (Model != null && Model.Count > 0)
             {
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>时间</th>
-                        <th>类型</th>
-                        <th>金额</th>
-                        <th>说明</th>
-                        <th>余额</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var record in Model)
-                    {
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
                         <tr>
-                            <td>@record.CreatedOnUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                            <td>@record.TransactionTypeName</td>
-                            <td class="@(record.Amount > 0 ? "text-success" : "text-danger")">
-                                @(record.Amount > 0 ? "+" : "")@record.Amount.ToString("F2")
-                            </td>
-                            <td>@record.Description</td>
-                            <td>@record.BalanceAfter.ToString("F2")</td>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>金额</th>
+                            <th>说明</th>
+                            <th>余额</th>
                         </tr>
-                    }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                        @foreach (var record in Model)
+                        {
+                            <tr>
+                                <td>@record.CreatedOnUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@record.TransactionTypeName</td>
+                                <td class="@(record.Amount > 0 ? "text-success" : "text-danger")">
+                                    @(record.Amount > 0 ? "+" : "")@record.Amount.ToString("F2")
+                                </td>
+                                <td>@record.Description</td>
+                                <td>@record.BalanceAfter.ToString("F2")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav class="mt-2">
+                    <ul class="pagination">
+                        @if (currentPage > 0)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="/MonetaryCredit/Transactions?page=@(currentPage - 1)">
+                                    <i class="fa fa-angle-left"></i> 上一页
+                                </a>
+                            </li>
+                        }
+                        <li class="page-item active disabled">
+                            <span class="page-link">第 @(currentPage + 1) 页</span>
+                        </li>
+                        @if (Model.Count >= pageSize)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="/MonetaryCredit/Transactions?page=@(currentPage + 1)">
+                                    下一页 <i class="fa fa-angle-right"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
             }
             else
             {
@@ -40,8 +72,8 @@
             }
         </div>
 
-        <div class="actions">
-            <a href="/MonetaryCredit/Account" class="btn">返回我的余额</a>
+        <div class="actions mt-3">
+            <a href="/MonetaryCredit/Account" class="btn btn-default">返回我的余额</a>
         </div>
     </div>
 </div>

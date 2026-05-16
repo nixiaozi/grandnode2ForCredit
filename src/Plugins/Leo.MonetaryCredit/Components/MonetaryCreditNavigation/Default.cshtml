@@ -1,0 +1,19 @@
+@model Leo.MonetaryCredit.Models.User.MonetaryCreditNavigationModel
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+
+@{
+    // Check if current page is the MonetaryCredit account page
+    var isActive = ViewContext.RouteData.Values["controller"]?.ToString() == "MonetaryCredit" 
+                   && ViewContext.RouteData.Values["action"]?.ToString() == "Account";
+}
+
+<li class="monetary-credit-navigation @(isActive ? "active" : "inactive")">
+    <a href="@Model.AccountUrl">
+        <i class="bi bi-wallet2"></i>
+        <span>我的积分</span>
+        @if (Model.HasCredits)
+        {
+            <span class="badge badge-success ml-1">@Model.TotalBalance.ToString("N2")</span>
+        }
+    </a>
+</li>

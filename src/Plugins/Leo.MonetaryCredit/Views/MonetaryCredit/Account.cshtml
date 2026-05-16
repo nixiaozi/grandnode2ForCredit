@@ -1,3 +1,4 @@
+@using Leo.MonetaryCredit.Domain
 @model Leo.MonetaryCredit.Models.UserAccountViewModel
 
 <div class="page account-page monetary-credit-account">
@@ -5,10 +6,14 @@
         <h1>我的余额</h1>
     </div>
     <div class="page-body">
+
+        <!-- Balance & Credits Summary -->
         <div class="account-info-box">
             <div class="info-row">
                 <span class="label">当前余额：</span>
-                <span class="value balance">¥ @Model.Balance.ToString("F2")</span>
+                <span class="value balance" style="font-size: 1.3em; font-weight: bold; color: #e7505a;">
+                    ¥ @Model.Balance.ToString("F2")
+                </span>
             </div>
             <div class="info-row">
                 <span class="label">购物积分：</span>
@@ -28,24 +33,100 @@
             </div>
             @if (Model.RemainingRechargeQuota >= 0)
             {
-                <div class="info-row">
+                <div class="info-row" style="color: @(Model.RemainingRechargeQuota <= 0 ? "#e7505a" : "inherit");">
                     <span class="label">剩余充值额度：</span>
-                    <span class="value">¥ @Model.RemainingRechargeQuota.ToString("F2")</span>
+                    <span class="value">¥ @Model.RemainingRechargeQuota.ToString("F2")
+                        <span class="text-muted" style="font-size: 0.85em;">（上限 ¥@Model.MaxRechargeAmount.ToString("F2")）</span>
+                    </span>
                 </div>
             }
         </div>
 
-        <div class="recharge-section">
+        <!-- Recharge Form -->
+        <div class="recharge-section mt-3">
             <h3>充值</h3>
-            <div class="recharge-form">
-                <input type="number" id="rechargeAmount" placeholder="请输入充值金额" step="0.01" min="0.01" class="form-control"/>
-                <button type="button" id="rechargeBtn" class="btn btn-primary">充值</button>
-                <span id="rechargeMessage" class="text-danger"></span>
-            </div>
+            @if (Model.RemainingRechargeQuota == 0)
+            {
+                <div class="alert alert-warning">
+                    您已达到最大累计充值限额 ¥@Model.MaxRechargeAmount.ToString("F2")，无法继续充值。如需调整请联系客服。
+                </div>
+            }
+            else
+            {
+                <div class="recharge-form">
+                    <div class="input-group" style="max-width: 400px;">
+                        <input type="number" id="rechargeAmount" placeholder="请输入充值金额"
+                               step="0.01" min="0.01"
+                               max="@(Model.RemainingRechargeQuota > 0 ? Model.RemainingRechargeQuota.ToString("F2") : "")"
+                               class="form-control"/>
+                        <button type="button" id="rechargeBtn" class="btn btn-primary">充值</button>
+                    </div>
+                    <div id="rechargeMessage" style="margin-top: 8px;"></div>
+                    @if (Model.RemainingRechargeQuota > 0 && Model.MaxRechargeAmount > 0)
+                    {
+                        <small class="text-muted">
+                            本次最多可充值 ¥@Model.RemainingRechargeQuota.ToString("F2")
+                        </small>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="actions">
-            <a href="/MonetaryCredit/Transactions" class="btn">查看交易记录</a>
+        <!-- Recharge Order History -->
+        @if (Model.RechargeOrders.Count > 0)
+        {
+            <div class="section mt-3">
+                <h3>充值记录</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>类型</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.RechargeOrders)
+                            {
+                                <tr>
+                                    <td>@order.CreatedOnUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@(order.RechargeType == RechargeType.Frontend ? "自助充值" : "后台充值")</td>
+                                    <td>¥ @order.Amount.ToString("F2")</td>
+                                    <td>
+                                        <span class="label label-@(order.Status == RechargeStatus.AdminApproved ? "success" :
+                                            order.Status == RechargeStatus.Rejected ? "danger" :
+                                            order.Status == RechargeStatus.OperatorApproved ? "warning" : "info")">
+                                            @order.StatusName
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(order.RejectionReason))
+                                        {
+                                            <span class="text-danger">@order.RejectionReason</span>
+                                        }
+                                        else if (order.Status == RechargeStatus.AdminApproved)
+                                        {
+                                            <text>已完成</text>
+                                        }
+                                        else
+                                        {
+                                            <text>-</text>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Actions -->
+        <div class="actions mt-3">
+            <a href="/MonetaryCredit/Transactions" class="btn btn-default">查看交易明细</a>
         </div>
     </div>
 </div>
@@ -53,29 +134,42 @@
 @section Scripts{
     <script>
         document.getElementById('rechargeBtn').addEventListener('click', function() {
-            var amount = parseFloat(document.getElementById('rechargeAmount').value);
+            var amountInput = document.getElementById('rechargeAmount');
+            var amount = parseFloat(amountInput.value);
             var msgEl = document.getElementById('rechargeMessage');
 
             if (!amount || amount <= 0) {
-                msgEl.textContent = '请输入有效的充值金额';
+                msgEl.innerHTML = '<span class="text-danger">请输入有效的充值金额</span>';
                 return;
             }
 
-            msgEl.textContent = '处理中...';
-            msgEl.className = 'text-info';
+            var maxAmount = parseFloat(amountInput.max);
+            if (maxAmount > 0 && amount > maxAmount) {
+                msgEl.innerHTML = '<span class="text-danger">本次最多可充值 ¥' + maxAmount.toFixed(2) + '</span>';
+                return;
+            }
 
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/MonetaryCredit/Recharge';
+            msgEl.innerHTML = '<span class="text-info"><i class="fa fa-spinner fa-spin"></i> 处理中...</span>';
 
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'amount';
-            input.value = amount;
-            form.appendChild(input);
-
-            document.body.appendChild(form);
-            form.submit();
+            fetch('/MonetaryCredit/Recharge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'amount=' + encodeURIComponent(amount)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    msgEl.innerHTML = '<span class="text-success"><i class="fa fa-check"></i> ' + data.message + '</span>';
+                    amountInput.value = '';
+                    // Reload page after short delay to show updated data
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    msgEl.innerHTML = '<span class="text-danger"><i class="fa fa-times"></i> ' + data.message + '</span>';
+                }
+            })
+            .catch(function() {
+                msgEl.innerHTML = '<span class="text-danger">网络错误，请重试</span>';
+            });
         });
     </script>
 }

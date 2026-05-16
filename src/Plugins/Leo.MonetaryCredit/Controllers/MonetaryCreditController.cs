@@ -35,13 +35,16 @@ public class MonetaryCreditController(
     }
 
     /// <summary>
-    ///     User account page - shows balance and credits
+    ///     User account page - shows balance, credits and recharge form with quota
     /// </summary>
     public async Task<IActionResult> Account()
     {
         var customer = contextAccessor.WorkContext.CurrentCustomer;
         var account = await userAccountService.GetOrCreateAccountAsync(customer.Id);
         var settings = await settingsService.GetSettingsAsync();
+
+        // Load recent recharge orders for this customer
+        var rechargeOrders = await rechargeService.GetCustomerRechargeOrdersAsync(customer.Id);
 
         var model = new UserAccountViewModel
         {
@@ -50,7 +53,25 @@ public class MonetaryCreditController(
             SalesCredits = account.SalesCredits,
             ActivityCredits = account.ActivityCredits,
             TotalRecharged = account.TotalRecharged,
-            MaxRechargeAmount = settings.MaxRechargeAmount
+            MaxRechargeAmount = settings.MaxRechargeAmount,
+            RechargeOrders = rechargeOrders.Select(o => new RechargeOrderSummaryModel
+            {
+                Id = o.Id,
+                Amount = o.Amount,
+                RechargeType = o.RechargeType,
+                Status = o.Status,
+                StatusName = o.Status switch
+                {
+                    RechargeStatus.Pending => "待审批",
+                    RechargeStatus.OperatorApproved => "操作员已审批",
+                    RechargeStatus.AdminApproved => "已完成",
+                    RechargeStatus.Rejected => "已拒绝",
+                    _ => o.Status.ToString()
+                },
+                CreatedOnUtc = o.CreatedOnUtc,
+                CompletedOnUtc = o.CompletedOnUtc,
+                RejectionReason = o.RejectionReason
+            }).ToList()
         };
 
         return View(model);
@@ -88,7 +109,7 @@ public class MonetaryCreditController(
     }
 
     /// <summary>
-    ///     Frontend recharge (POST)
+    ///     Frontend recharge (AJAX POST)
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Recharge(decimal amount)
@@ -100,8 +121,8 @@ public class MonetaryCreditController(
 
         try
         {
-            await rechargeService.CreateFrontendRechargeOrderAsync(customer.Id, amount);
-            return Json(new { success = true, message = "充值成功" });
+            var order = await rechargeService.CreateFrontendRechargeOrderAsync(customer.Id, amount);
+            return Json(new { success = true, message = "充值订单已提交", orderId = order.Id });
         }
         catch (Exception ex)
         {

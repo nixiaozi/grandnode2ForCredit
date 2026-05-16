@@ -77,6 +77,16 @@ public class AdminMenuProvider : IAdminMenuProvider
                     IconClass      = "fa fa-bank",
                     Visible        = true,
                     PermissionNames = new List<string> { "ManagePlugins" }
+                },
+                new()
+                {
+                    SystemName     = "Leo.MonetaryCredit.SystemAccountTransactions",
+                    ResourceName   = "交易明细",
+                    ControllerName = "MonetaryCredit",
+                    ActionName     = "SystemAccountTransactions",
+                    IconClass      = "fa fa-exchange",
+                    Visible        = true,
+                    PermissionNames = new List<string> { "ManagePlugins" }
                 }
             }
         };

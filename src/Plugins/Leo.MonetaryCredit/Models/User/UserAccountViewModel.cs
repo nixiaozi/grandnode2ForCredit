@@ -14,4 +14,9 @@ public class UserAccountViewModel
     public decimal RemainingRechargeQuota => MaxRechargeAmount > 0
         ? Math.Max(0, MaxRechargeAmount - TotalRecharged)
         : -1; // -1 means unlimited
+
+    /// <summary>
+    ///     Recent recharge orders for this customer
+    /// </summary>
+    public List<RechargeOrderSummaryModel> RechargeOrders { get; set; } = new();
 }
