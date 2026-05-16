@@ -1,5 +1,6 @@
 using Grand.Business.Core.Interfaces.Checkout.Payments;
 using Grand.Infrastructure;
+using Grand.Web.Common.Menu;
 using Leo.MonetaryCredit.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -26,6 +27,9 @@ public class StartupApplication : IStartupApplication
 
         // Register MediatR notification handler
         services.AddScoped<Infrastructure.Handler.MonetaryCreditOrderPaidHandler>();
+
+        // Register admin menu provider
+        services.AddScoped<IAdminMenuProvider, AdminMenuProvider>();
     }
 
     public int Priority => 10;
