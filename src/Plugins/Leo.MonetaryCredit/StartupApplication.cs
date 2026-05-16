@@ -24,6 +24,8 @@ public class StartupApplication : IStartupApplication
         services.AddScoped<ISystemAccountService, SystemAccountService>();
         services.AddScoped<IRechargeService, RechargeService>();
         services.AddScoped<IMonetaryCreditSettingsService, MonetaryCreditSettingsService>();
+        services.AddScoped<ISystemAccountTransactionService, SystemAccountTransactionService>();
+
 
         // Register MediatR notification handler
         services.AddScoped<Infrastructure.Handler.MonetaryCreditOrderPaidHandler>();

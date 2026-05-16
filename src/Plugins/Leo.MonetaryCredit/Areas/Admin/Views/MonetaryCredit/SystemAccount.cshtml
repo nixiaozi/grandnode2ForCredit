@@ -39,3 +39,44 @@
         </ul>
     </div>
 </div>
+
+@{
+    var recentTx = ViewBag.RecentTransactions as Grand.Domain.IPagedList<Leo.MonetaryCredit.Domain.SystemAccountTransaction>;
+}
+
+@if (recentTx != null && recentTx.Any())
+{
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            最近交易记录
+            <a href="@Url.Action("SystemAccountTransactions")" class="btn btn-link btn-xs pull-right">查看全部</a>
+        </div>
+        <div class="panel-body">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>类型</th>
+                        <th>金额（元）</th>
+                        <th>余额（元）</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tx in recentTx)
+                    {
+                        <tr>
+                            <td>@tx.CreatedOnUtc.ToLocalTime()</td>
+                            <td>@tx.TransactionType</td>
+                            <td style="color: @(tx.Amount >= 0 ? "#5cb85c" : "#e7505a"); font-weight: bold;">
+                                @(tx.Amount >= 0 ? "+" : "")@tx.Amount.ToString("F2")
+                            </td>
+                            <td>@tx.BalanceAfter.ToString("F2")</td>
+                            <td>@tx.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

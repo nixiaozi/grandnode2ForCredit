@@ -21,6 +21,7 @@ public class MonetaryCreditController(
     ISettingService settingService,
     IUserAccountService userAccountService,
     ISystemAccountService systemAccountService,
+    ISystemAccountTransactionService systemAccountTransactionService,
     IRechargeService rechargeService,
     ICustomerService customerService)
     : BaseController
@@ -186,10 +187,25 @@ public class MonetaryCreditController(
 
     /// <summary>
     ///     View system account balance (transaction fees collected)
+    ///     Also shows last 10 transactions as summary.
     /// </summary>
     public async Task<IActionResult> SystemAccount()
     {
         var account = await systemAccountService.GetOrCreateSystemAccountAsync();
+
+        // Load last 10 transactions for summary
+        var recentTransactions = await systemAccountTransactionService.GetTransactionsAsync(pageIndex: 0, pageSize: 10);
+        ViewBag.RecentTransactions = recentTransactions;
+
         return View(account);
+    }
+
+    /// <summary>
+    ///     Full paged list of system account transactions
+    /// </summary>
+    public async Task<IActionResult> SystemAccountTransactions(int page = 0)
+    {
+        var transactions = await systemAccountTransactionService.GetTransactionsAsync(page, 20);
+        return View(transactions);
     }
 }

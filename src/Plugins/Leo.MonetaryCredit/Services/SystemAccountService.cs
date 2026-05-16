@@ -8,7 +8,8 @@ namespace Leo.MonetaryCredit.Services;
 /// </summary>
 public class SystemAccountService(
     IRepository<SystemAccount> systemAccountRepository,
-    IRepository<CreditRecord> creditRecordRepository)
+    IRepository<CreditRecord> creditRecordRepository,
+    ISystemAccountTransactionService systemAccountTransactionService)
     : ISystemAccountService
 {
     public async Task<SystemAccount> GetOrCreateSystemAccountAsync()
@@ -25,7 +26,6 @@ public class SystemAccountService(
         var account = await GetOrCreateSystemAccountAsync();
 
         await systemAccountRepository.IncField(account.Id, x => x.Balance, amount);
-
         account.Balance += amount;
 
         // Record the fee transaction (no customer associated)
@@ -40,6 +40,17 @@ public class SystemAccountService(
             SalesCreditsAfter = 0,
             ActivityCreditsAfter = 0,
             Description = description
+        });
+
+        // Also write to dedicated system account transaction collection
+        await systemAccountTransactionService.InsertTransactionAsync(new SystemAccountTransaction
+        {
+            Amount = amount,
+            BalanceAfter = account.Balance,
+            OrderId = orderId,
+            TransactionType = CreditTransactionType.TransactionFee.ToString(),
+            Description = description,
+            CreatedOnUtc = DateTime.UtcNow
         });
 
         return account;
