@@ -1,3 +1,5 @@
+using Grand.Business.Core.Interfaces.Checkout.Orders;
+using Grand.Domain.Payments;
 using Grand.Infrastructure;
 using Leo.MonetaryCredit.Domain;
 using Leo.MonetaryCredit.Models;
@@ -14,6 +16,8 @@ public class MonetaryCreditController(
     IContextAccessor contextAccessor,
     IUserAccountService userAccountService,
     IRechargeService rechargeService,
+    IRechargePaymentService rechargePaymentService,
+    IOrderService orderService,
     IMonetaryCreditSettingsService settingsService)
     : BasePaymentController
 {
@@ -62,6 +66,7 @@ public class MonetaryCreditController(
                 Status = o.Status,
                 StatusName = o.Status switch
                 {
+                    RechargeStatus.WaitingPayment => "待支付",
                     RechargeStatus.Pending => "待审批",
                     RechargeStatus.OperatorApproved => "操作员已审批",
                     RechargeStatus.AdminApproved => "已完成",
@@ -70,7 +75,8 @@ public class MonetaryCreditController(
                 },
                 CreatedOnUtc = o.CreatedOnUtc,
                 CompletedOnUtc = o.CompletedOnUtc,
-                RejectionReason = o.RejectionReason
+                RejectionReason = o.RejectionReason,
+                PaymentMethodSystemName = o.PaymentMethodSystemName
             }).ToList()
         };
 
@@ -109,7 +115,7 @@ public class MonetaryCreditController(
     }
 
     /// <summary>
-    ///     Frontend recharge (AJAX POST)
+    ///     Step 1: Create recharge order and redirect to payment method selection
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Recharge(decimal amount)
@@ -122,12 +128,145 @@ public class MonetaryCreditController(
         try
         {
             var order = await rechargeService.CreateFrontendRechargeOrderAsync(customer.Id, amount);
-            return Json(new { success = true, message = "充值订单已提交", orderId = order.Id });
+            // Redirect to payment method selection page
+            return Json(new { success = true, redirectUrl = $"/MonetaryCredit/RechargePaymentMethods/{order.Id}" });
         }
         catch (Exception ex)
         {
             return Json(new { success = false, message = ex.Message });
         }
+    }
+
+    /// <summary>
+    ///     Step 2: Show available payment methods for recharge
+    /// </summary>
+    public async Task<IActionResult> RechargePaymentMethods(string orderId)
+    {
+        var order = await rechargeService.GetRechargeOrderAsync(orderId);
+        if (order == null || order.Status != RechargeStatus.WaitingPayment)
+        {
+            return RedirectToAction("Account");
+        }
+
+        // Verify ownership
+        var customer = contextAccessor.WorkContext.CurrentCustomer;
+        if (order.CustomerId != customer.Id)
+        {
+            return RedirectToAction("Account");
+        }
+
+        var paymentMethods = await rechargePaymentService.GetAvailablePaymentMethodsAsync();
+        if (paymentMethods.Count == 0)
+        {
+            // No payment methods available, show error
+            ViewBag.ErrorMessage = "当前没有可用的支付方式，请联系管理员配置支付方式。";
+            return View("RechargePaymentMethods", new RechargePaymentMethodsViewModel
+            {
+                OrderId = orderId,
+                Amount = order.Amount,
+                PaymentMethods = new List<PaymentMethodModel>()
+            });
+        }
+
+        var model = new RechargePaymentMethodsViewModel
+        {
+            OrderId = orderId,
+            Amount = order.Amount,
+            PaymentMethods = paymentMethods
+        };
+
+        return View(model);
+    }
+
+    /// <summary>
+    ///     Step 3: Redirect to selected payment gateway
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> RechargeRedirect(string orderId, string paymentMethodSystemName)
+    {
+        var order = await rechargeService.GetRechargeOrderAsync(orderId);
+        if (order == null || order.Status != RechargeStatus.WaitingPayment)
+            return RedirectToAction("Account");
+
+        var customer = contextAccessor.WorkContext.CurrentCustomer;
+        if (order.CustomerId != customer.Id)
+            return RedirectToAction("Account");
+
+        try
+        {
+            var redirectUrl = await rechargePaymentService.CreatePaymentAndRedirectAsync(orderId, paymentMethodSystemName);
+            return Redirect(redirectUrl);
+        }
+        catch (Exception ex)
+        {
+            // Mark recharge as failed
+            await rechargeService.FailRechargeAsync(orderId, $"支付跳转失败: {ex.Message}");
+            return RedirectToAction("RechargeReturn", new { orderId, success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    ///     Step 4: Payment return page - user is redirected here after payment
+    ///     Checks virtual order payment status and recharge order status
+    /// </summary>
+    public async Task<IActionResult> RechargeReturn(string orderId, bool? success, string? message)
+    {
+        var order = await rechargeService.GetRechargeOrderAsync(orderId);
+        if (order == null)
+            return RedirectToAction("Account");
+
+        var model = new RechargeReturnViewModel
+        {
+            OrderId = orderId,
+            Amount = order.Amount,
+            Success = false
+        };
+
+        // Re-fetch order to get latest status (webhook may have already processed it)
+        var freshOrder = await rechargeService.GetRechargeOrderAsync(orderId);
+
+        // Check if recharge was already completed by webhook handler
+        if (freshOrder?.Status == RechargeStatus.AdminApproved)
+        {
+            model.Success = true;
+            model.Message = "充值成功！";
+            return View(model);
+        }
+
+        if (freshOrder?.Status == RechargeStatus.Rejected)
+        {
+            model.Success = false;
+            model.Message = freshOrder.RejectionReason ?? "充值失败";
+            return View(model);
+        }
+
+        // If still WaitingPayment, check the virtual order's payment status
+        if (!string.IsNullOrEmpty(freshOrder?.VirtualOrderId))
+        {
+            try
+            {
+                var virtualOrder = await orderService.GetOrderById(freshOrder.VirtualOrderId);
+                if (virtualOrder != null && virtualOrder.PaymentStatusId == PaymentStatus.Paid)
+                {
+                    // Payment is confirmed on the order level - complete the recharge
+                    if (freshOrder.Status == RechargeStatus.WaitingPayment)
+                    {
+                        await rechargeService.CompleteRechargeAfterPaymentAsync(orderId);
+                    }
+                    model.Success = true;
+                    model.Message = "充值成功！";
+                    return View(model);
+                }
+            }
+            catch
+            {
+                // Order not found, fall through to default handling
+            }
+        }
+
+        // Payment not completed (user cancelled or returned early)
+        model.Message = message ?? "支付未完成，您可以稍后在充值记录中重新发起支付";
+        return View(model);
     }
 }
 
@@ -138,4 +277,25 @@ public class PaymentInfoModel
 {
     public decimal Balance { get; set; }
     public string CustomerEmail { get; set; }
+}
+
+/// <summary>
+///     Recharge payment method selection model
+/// </summary>
+public class RechargePaymentMethodsViewModel
+{
+    public string OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public IList<PaymentMethodModel> PaymentMethods { get; set; } = [];
+}
+
+/// <summary>
+///     Recharge return result model
+/// </summary>
+public class RechargeReturnViewModel
+{
+    public string OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public bool Success { get; set; }
+    public string Message { get; set; }
 }

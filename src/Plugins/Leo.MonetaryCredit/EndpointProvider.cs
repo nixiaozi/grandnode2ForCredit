@@ -28,6 +28,24 @@ public class EndpointProvider : IEndpointProvider
             "MonetaryCredit/Transactions",
             new { controller = "MonetaryCredit", action = "Transactions", area = "" }
         );
+
+        // Recharge payment method selection
+        endpointRouteBuilder.MapControllerRoute("Plugin.MonetaryCredit.RechargePaymentMethods",
+            "MonetaryCredit/RechargePaymentMethods/{orderId}",
+            new { controller = "MonetaryCredit", action = "RechargePaymentMethods", area = "" }
+        );
+
+        // Recharge redirect to payment gateway
+        endpointRouteBuilder.MapControllerRoute("Plugin.MonetaryCredit.RechargeRedirect",
+            "MonetaryCredit/RechargeRedirect",
+            new { controller = "MonetaryCredit", action = "RechargeRedirect", area = "" }
+        );
+
+        // Recharge payment return
+        endpointRouteBuilder.MapControllerRoute("Plugin.MonetaryCredit.RechargeReturn",
+            "MonetaryCredit/RechargeReturn",
+            new { controller = "MonetaryCredit", action = "RechargeReturn", area = "" }
+        );
     }
 
     public int Priority => 0;

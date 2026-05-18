@@ -26,10 +26,12 @@ public class StartupApplication : IStartupApplication
         services.AddScoped<IRechargeService, RechargeService>();
         services.AddScoped<IMonetaryCreditSettingsService, MonetaryCreditSettingsService>();
         services.AddScoped<ISystemAccountTransactionService, SystemAccountTransactionService>();
+        services.AddScoped<IRechargePaymentService, RechargePaymentService>();
 
 
-        // Register MediatR notification handler
+        // Register MediatR notification handlers
         services.AddScoped<Infrastructure.Handler.MonetaryCreditOrderPaidHandler>();
+        services.AddScoped<Infrastructure.Handler.RechargeOrderPaidHandler>();
 
         // Register admin menu provider
         services.AddScoped<IAdminMenuProvider, AdminMenuProvider>();

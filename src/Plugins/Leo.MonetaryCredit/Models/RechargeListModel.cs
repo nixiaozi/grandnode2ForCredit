@@ -15,6 +15,7 @@ public class RechargeListModel
     public RechargeStatus Status { get; set; }
     public string StatusName => Status switch
     {
+        RechargeStatus.WaitingPayment => "待支付",
         RechargeStatus.Pending => "待审批",
         RechargeStatus.OperatorApproved => "操作员已审批",
         RechargeStatus.AdminApproved => "已完成",

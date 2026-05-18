@@ -1,5 +1,19 @@
 @using Leo.MonetaryCredit.Domain
+@using Grand.Web.Common.Page
 @model Leo.MonetaryCredit.Models.UserAccountViewModel
+@inject IPageHeadBuilder pagebuilder
+@{
+    Layout = "_TwoColumns";
+
+    //title
+    pagebuilder.AddTitleParts(Loc["Title.Account"]);
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = 200 })
+}
+
 
 <div class="page account-page monetary-credit-account">
     <div class="page-title">
@@ -84,8 +98,9 @@
                                 <th>时间</th>
                                 <th>类型</th>
                                 <th>金额</th>
+                                <th>支付方式</th>
                                 <th>状态</th>
-                                <th>备注</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -96,20 +111,37 @@
                                     <td>@(order.RechargeType == RechargeType.Frontend ? "自助充值" : "后台充值")</td>
                                     <td>¥ @order.Amount.ToString("F2")</td>
                                     <td>
+                                        @if (!string.IsNullOrEmpty(order.PaymentMethodSystemName))
+                                        {
+                                            <span class="text-muted" style="font-size: 0.85em;">@order.PaymentMethodSystemName</span>
+                                        }
+                                        else
+                                        {
+                                            <text>-</text>
+                                        }
+                                    </td>
+                                    <td>
                                         <span class="label label-@(order.Status == RechargeStatus.AdminApproved ? "success" :
                                             order.Status == RechargeStatus.Rejected ? "danger" :
+                                            order.Status == RechargeStatus.WaitingPayment ? "warning" :
                                             order.Status == RechargeStatus.OperatorApproved ? "warning" : "info")">
                                             @order.StatusName
                                         </span>
                                     </td>
                                     <td>
-                                        @if (!string.IsNullOrEmpty(order.RejectionReason))
+                                        @if (order.Status == RechargeStatus.WaitingPayment)
                                         {
-                                            <span class="text-danger">@order.RejectionReason</span>
+                                            <a href="/MonetaryCredit/RechargePaymentMethods/@order.Id" class="btn btn-sm btn-primary">
+                                                去支付
+                                            </a>
                                         }
                                         else if (order.Status == RechargeStatus.AdminApproved)
                                         {
                                             <text>已完成</text>
+                                        }
+                                        else if (order.Status == RechargeStatus.Rejected)
+                                        {
+                                            <span class="text-danger" title="@order.RejectionReason">已拒绝</span>
                                         }
                                         else
                                         {
@@ -129,11 +161,15 @@
             <a href="/MonetaryCredit/Transactions" class="btn btn-default">查看交易明细</a>
         </div>
     </div>
+
 </div>
 
-@* @section Scripts{ *@
-    <script>
-        document.getElementById('rechargeBtn').addEventListener('click', function() {
+<script asp-location="Footer" asp-order="300">
+    document.addEventListener('DOMContentLoaded', function () {
+        var rechargeBtn = document.getElementById('rechargeBtn');
+        if (!rechargeBtn) return;
+
+        rechargeBtn.addEventListener('click', function () {
             var amountInput = document.getElementById('rechargeAmount');
             var amount = parseFloat(amountInput.value);
             var msgEl = document.getElementById('rechargeMessage');
@@ -149,27 +185,28 @@
                 return;
             }
 
-            msgEl.innerHTML = '<span class="text-info"><i class="fa fa-spinner fa-spin"></i> 处理中...</span>';
+            msgEl.innerHTML = '<span class="text-info"><i class="fa fa-spinner fa-spin"></i> 创建充值订单...</span>';
+            rechargeBtn.disabled = true;
 
             fetch('/MonetaryCredit/Recharge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'amount=' + encodeURIComponent(amount)
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    msgEl.innerHTML = '<span class="text-success"><i class="fa fa-check"></i> ' + data.message + '</span>';
-                    amountInput.value = '';
-                    // Reload page after short delay to show updated data
-                    setTimeout(function() { location.reload(); }, 1500);
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success && data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
                 } else {
-                    msgEl.innerHTML = '<span class="text-danger"><i class="fa fa-times"></i> ' + data.message + '</span>';
+                    msgEl.innerHTML = '<span class="text-danger"><i class="fa fa-times"></i> ' + (data.message || '创建充值订单失败') + '</span>';
+                    rechargeBtn.disabled = false;
                 }
             })
-            .catch(function() {
+            .catch(function () {
                 msgEl.innerHTML = '<span class="text-danger">网络错误，请重试</span>';
+                rechargeBtn.disabled = false;
             });
         });
-    </script>
-@* } *@
+    });
+</script>
+

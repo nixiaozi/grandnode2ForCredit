@@ -1,0 +1,60 @@
+@model Leo.MonetaryCredit.Controllers.RechargePaymentMethodsViewModel
+
+<div class="page account-page monetary-credit-recharge">
+    <div class="page-title">
+        <h1>选择支付方式</h1>
+    </div>
+    <div class="page-body">
+
+        <div class="recharge-amount-info mb-3">
+            <span class="label">充值金额：</span>
+            <strong style="font-size: 1.2em; color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage as string))
+        {
+            <div class="alert alert-warning">
+                @ViewBag.ErrorMessage
+            </div>
+        }
+        else if (Model.PaymentMethods.Count == 0)
+        {
+            <div class="alert alert-warning">
+                当前没有可用的支付方式，请联系管理员配置支付方式。
+            </div>
+        }
+        else
+        {
+            <div class="payment-methods-list">
+                <p>请选择支付方式完成充值：</p>
+
+                @foreach (var method in Model.PaymentMethods)
+                {
+                    <form method="post" action="/MonetaryCredit/RechargeRedirect" class="payment-method-item mb-2">
+                        <input type="hidden" name="orderId" value="@Model.OrderId"/>
+                        <input type="hidden" name="paymentMethodSystemName" value="@method.SystemName"/>
+                        <button type="submit" class="btn btn-default btn-lg w-100 text-left d-flex align-items-center gap-2"
+                                style="padding: 15px;">
+                            @if (!string.IsNullOrEmpty(method.LogoUrl))
+                            {
+                                <img src="@method.LogoUrl" alt="@method.FriendlyName" style="max-height: 36px; max-width: 120px;"/>
+                            }
+                            <div>
+                                <div style="font-weight: 600;">@method.FriendlyName</div>
+                                @if (!string.IsNullOrEmpty(method.Description))
+                                {
+                                    <small class="text-muted">@method.Description</small>
+                                }
+                            </div>
+                            <span class="ml-auto" style="color: #999;">→</span>
+                        </button>
+                    </form>
+                }
+            </div>
+        }
+
+        <div class="actions mt-3">
+            <a href="/MonetaryCredit/Account" class="btn btn-default">返回我的余额</a>
+        </div>
+    </div>
+</div>

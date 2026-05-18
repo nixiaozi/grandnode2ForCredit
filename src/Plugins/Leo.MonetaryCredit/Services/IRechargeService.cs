@@ -15,9 +15,20 @@ public interface IRechargeService
     Task<RechargeOrder> CreateBackendRechargeOrderAsync(string customerId, decimal amount, string operatorId, string operatorName, string? remark);
 
     /// <summary>
-    ///     Create a new frontend recharge order (auto-approved, no approval needed)
+    ///     Create a new frontend recharge order (status: WaitingPayment)
     /// </summary>
     Task<RechargeOrder> CreateFrontendRechargeOrderAsync(string customerId, decimal amount);
+
+    /// <summary>
+    ///     Complete a frontend recharge order after successful payment
+    ///     Auto-approves and adds balance
+    /// </summary>
+    Task<RechargeOrder> CompleteRechargeAfterPaymentAsync(string rechargeOrderId);
+
+    /// <summary>
+    ///     Mark a recharge order as failed (payment failed or cancelled)
+    /// </summary>
+    Task<RechargeOrder> FailRechargeAsync(string rechargeOrderId, string reason);
 
     /// <summary>
     ///     Operator approves a recharge order (Level 1)
@@ -52,4 +63,9 @@ public interface IRechargeService
     ///     Get recharge orders for a specific customer
     /// </summary>
     Task<IList<RechargeOrder>> GetCustomerRechargeOrdersAsync(string customerId);
+
+    /// <summary>
+    ///     Update a recharge order (internal use)
+    /// </summary>
+    Task<RechargeOrder> UpdateRechargeOrderAsync(RechargeOrder order);
 }

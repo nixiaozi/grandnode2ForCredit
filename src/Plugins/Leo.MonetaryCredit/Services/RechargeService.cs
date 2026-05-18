@@ -63,16 +63,56 @@ public class RechargeService(
             CustomerId = customerId,
             Amount = amount,
             RechargeType = RechargeType.Frontend,
-            Status = RechargeStatus.Pending
+            Status = RechargeStatus.WaitingPayment
         };
 
-        order = await rechargeOrderRepository.InsertAsync(order);
+        return await rechargeOrderRepository.InsertAsync(order);
+    }
 
-        // Frontend recharge auto-approve: Operator → Admin → Completed
-        await OperatorApproveAsync(order.Id, "SYSTEM");
-        await AdminApproveAsync(order.Id, "SYSTEM");
+    public async Task<RechargeOrder> CompleteRechargeAfterPaymentAsync(string rechargeOrderId)
+    {
+        var order = await rechargeOrderRepository.GetByIdAsync(rechargeOrderId)
+            ?? throw new FileNotFoundException($"充值订单 {rechargeOrderId} 不存在");
 
-        return order;
+        if (order.Status != RechargeStatus.WaitingPayment)
+            throw new InvalidOperationException($"充值订单当前状态 {order.Status} 不允许完成支付");
+
+        // Actually add the balance
+        var account = await userAccountService.AddBalanceAsync(
+            order.CustomerId,
+            order.Amount,
+            null,
+            order.Id,
+            $"在线充值 - 支付成功，充值 {order.Amount} 元",
+            CreditTransactionType.Recharge);
+
+        // Update total recharged (atomic)
+        await userAccountRepository.IncField(account.Id, x => x.TotalRecharged, order.Amount);
+
+        order.Status = RechargeStatus.AdminApproved;
+        order.ApprovedByOperatorId = "PAYMENT";
+        order.ApprovedByAdminId = "PAYMENT";
+        order.OperatorApprovedOnUtc = DateTime.UtcNow;
+        order.AdminApprovedOnUtc = DateTime.UtcNow;
+        order.CompletedOnUtc = DateTime.UtcNow;
+
+        return await rechargeOrderRepository.UpdateAsync(order);
+    }
+
+    public async Task<RechargeOrder> FailRechargeAsync(string rechargeOrderId, string reason)
+    {
+        var order = await rechargeOrderRepository.GetByIdAsync(rechargeOrderId)
+            ?? throw new FileNotFoundException($"充值订单 {rechargeOrderId} 不存在");
+
+        if (order.Status != RechargeStatus.WaitingPayment)
+            throw new InvalidOperationException($"充值订单当前状态 {order.Status} 不允许标记失败");
+
+        order.Status = RechargeStatus.Rejected;
+        order.RejectionReason = reason;
+        order.UpdatedOnUtc = DateTime.UtcNow;
+        order.UpdatedBy = "SYSTEM";
+
+        return await rechargeOrderRepository.UpdateAsync(order);
     }
 
     public async Task<RechargeOrder> OperatorApproveAsync(string rechargeOrderId, string operatorId)
@@ -165,6 +205,11 @@ public class RechargeService(
             .OrderByDescending(x => x.CreatedOnUtc)
             .Take(50)
             .ToList();
+    }
+
+    public async Task<RechargeOrder> UpdateRechargeOrderAsync(RechargeOrder order)
+    {
+        return await rechargeOrderRepository.UpdateAsync(order);
     }
 }
 

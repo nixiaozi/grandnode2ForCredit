@@ -55,6 +55,21 @@ public class RechargeOrder : BaseEntity
     public string? RejectionReason { get; set; }
 
     /// <summary>
+    ///     Payment method system name used for this recharge (e.g., StripeCheckout)
+    /// </summary>
+    public string? PaymentMethodSystemName { get; set; }
+
+    /// <summary>
+    ///     Associated PaymentTransaction Id (if created)
+    /// </summary>
+    public string? PaymentTransactionId { get; set; }
+
+    /// <summary>
+    ///     Virtual Order Id created for payment gateway integration
+    /// </summary>
+    public string? VirtualOrderId { get; set; }
+
+    /// <summary>
     ///     Admin remark / note
     /// </summary>
     public string? Remark { get; set; }
@@ -96,6 +111,11 @@ public enum RechargeType
 /// </summary>
 public enum RechargeStatus
 {
+    /// <summary>
+    ///     Waiting for payment (frontend recharge)
+    /// </summary>
+    WaitingPayment = -1,
+
     /// <summary>
     ///     Newly created, waiting for operator approval
     /// </summary>

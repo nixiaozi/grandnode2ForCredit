@@ -1,0 +1,33 @@
+@model Leo.MonetaryCredit.Controllers.RechargeReturnViewModel
+
+<div class="page account-page monetary-credit-recharge-return">
+    <div class="page-title">
+        <h1>充值结果</h1>
+    </div>
+    <div class="page-body">
+        <div class="result-box text-center" style="padding: 40px 20px; max-width: 500px; margin: 0 auto;">
+            @if (Model.Success)
+            {
+                <div style="font-size: 4em; color: #28a745; margin-bottom: 15px;">
+                    <i class="fa fa-check-circle"></i>
+                </div>
+                <h2 style="color: #28a745;">充值成功</h2>
+                <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
+                <p>@Model.Message</p>
+            }
+            else
+            {
+                <div style="font-size: 4em; color: #dc3545; margin-bottom: 15px;">
+                    <i class="fa fa-times-circle"></i>
+                </div>
+                <h2 style="color: #dc3545;">充值未完成</h2>
+                <p class="text-muted">充值金额：<strong>¥ @Model.Amount.ToString("F2")</strong></p>
+                <p>@Model.Message</p>
+            }
+        </div>
+
+        <div class="actions text-center mt-3">
+            <a href="/MonetaryCredit/Account" class="btn btn-primary">返回我的余额</a>
+        </div>
+    </div>
+</div>

@@ -15,4 +15,5 @@ public class RechargeOrderSummaryModel
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
     public string? RejectionReason { get; set; }
+    public string? PaymentMethodSystemName { get; set; }
 }
