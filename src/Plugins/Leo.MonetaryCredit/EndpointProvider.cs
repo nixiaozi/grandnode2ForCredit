@@ -46,6 +46,12 @@ public class EndpointProvider : IEndpointProvider
             "MonetaryCredit/RechargeReturn",
             new { controller = "MonetaryCredit", action = "RechargeReturn", area = "" }
         );
+
+        // Recharge status polling API (JSON)
+        endpointRouteBuilder.MapControllerRoute("Plugin.MonetaryCredit.RechargeStatusCheck",
+            "MonetaryCredit/RechargeStatusCheck/{orderId}",
+            new { controller = "MonetaryCredit", action = "RechargeStatusCheck", area = "" }
+        );
     }
 
     public int Priority => 0;

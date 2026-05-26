@@ -194,8 +194,7 @@ public class MonetaryCreditController(
 
         try
         {
-            var redirectUrl = await rechargePaymentService.CreatePaymentAndRedirectAsync(orderId, paymentMethodSystemName);
-            return Redirect(redirectUrl);
+            return RedirectToAction("RechargeReturn", new { orderId});
         }
         catch (Exception ex)
         {
@@ -207,7 +206,7 @@ public class MonetaryCreditController(
 
     /// <summary>
     ///     Step 4: Payment return page - user is redirected here after payment
-    ///     Checks virtual order payment status and recharge order status
+    ///     Returns a "pending" page that polls via JS until status is confirmed
     /// </summary>
     public async Task<IActionResult> RechargeReturn(string orderId, bool? success, string? message)
     {
@@ -219,54 +218,91 @@ public class MonetaryCreditController(
         {
             OrderId = orderId,
             Amount = order.Amount,
-            Success = false
+            Success = false,
+            IsPending = false
         };
 
-        // Re-fetch order to get latest status (webhook may have already processed it)
-        var freshOrder = await rechargeService.GetRechargeOrderAsync(orderId);
-
-        // Check if recharge was already completed by webhook handler
-        if (freshOrder?.Status == RechargeStatus.AdminApproved)
+        // If already completed by webhook before user lands here
+        if (order.Status == RechargeStatus.AdminApproved)
         {
             model.Success = true;
             model.Message = "充值成功！";
             return View(model);
         }
 
-        if (freshOrder?.Status == RechargeStatus.Rejected)
+        if (order.Status == RechargeStatus.Rejected)
         {
             model.Success = false;
-            model.Message = freshOrder.RejectionReason ?? "充值失败";
+            model.Message = order.RejectionReason ?? "充值失败";
             return View(model);
         }
 
-        // If still WaitingPayment, check the virtual order's payment status
-        if (!string.IsNullOrEmpty(freshOrder?.VirtualOrderId))
+        // Still waiting for payment callback — let JS poll
+        if (order.Status == RechargeStatus.WaitingPayment)
+        {
+            // Try one immediate check on the virtual order
+            if (!string.IsNullOrEmpty(order.VirtualOrderId))
+            {
+                try
+                {
+                    var virtualOrder = await orderService.GetOrderById(order.VirtualOrderId);
+                    if (virtualOrder?.PaymentStatusId == PaymentStatus.Paid)
+                    {
+                        await rechargeService.CompleteRechargeAfterPaymentAsync(orderId);
+                        model.Success = true;
+                        model.Message = "充值成功！";
+                        return View(model);
+                    }
+                }
+                catch { /* ignore */ }
+            }
+
+            // Not confirmed yet — show loading/polling page
+            model.IsPending = true;
+            model.Message = message ?? "正在等待支付确认...";
+            return View(model);
+        }
+
+        model.Message = message ?? "支付未完成，您可以稍后在充值记录中重新发起支付";
+        return View(model);
+    }
+
+    /// <summary>
+    ///     Polling API - called by JS every few seconds to check recharge status
+    /// </summary>
+    public async Task<IActionResult> RechargeStatusCheck(string orderId)
+    {
+        var order = await rechargeService.GetRechargeOrderAsync(orderId);
+        if (order == null)
+            return Json(new { status = "notfound" });
+
+        // Verify ownership
+        var customer = contextAccessor.WorkContext.CurrentCustomer;
+        if (order.CustomerId != customer.Id)
+            return Json(new { status = "forbidden" });
+
+        if (order.Status == RechargeStatus.AdminApproved)
+            return Json(new { status = "success", amount = order.Amount });
+
+        if (order.Status == RechargeStatus.Rejected)
+            return Json(new { status = "failed", message = order.RejectionReason ?? "充值失败" });
+
+        // Still WaitingPayment — try virtual order
+        if (order.Status == RechargeStatus.WaitingPayment && !string.IsNullOrEmpty(order.VirtualOrderId))
         {
             try
             {
-                var virtualOrder = await orderService.GetOrderById(freshOrder.VirtualOrderId);
-                if (virtualOrder != null && virtualOrder.PaymentStatusId == PaymentStatus.Paid)
+                var virtualOrder = await orderService.GetOrderById(order.VirtualOrderId);
+                if (virtualOrder?.PaymentStatusId == PaymentStatus.Paid)
                 {
-                    // Payment is confirmed on the order level - complete the recharge
-                    if (freshOrder.Status == RechargeStatus.WaitingPayment)
-                    {
-                        await rechargeService.CompleteRechargeAfterPaymentAsync(orderId);
-                    }
-                    model.Success = true;
-                    model.Message = "充值成功！";
-                    return View(model);
+                    await rechargeService.CompleteRechargeAfterPaymentAsync(orderId);
+                    return Json(new { status = "success", amount = order.Amount });
                 }
             }
-            catch
-            {
-                // Order not found, fall through to default handling
-            }
+            catch { /* ignore */ }
         }
 
-        // Payment not completed (user cancelled or returned early)
-        model.Message = message ?? "支付未完成，您可以稍后在充值记录中重新发起支付";
-        return View(model);
+        return Json(new { status = "pending" });
     }
 }
 
@@ -297,5 +333,7 @@ public class RechargeReturnViewModel
     public string OrderId { get; set; }
     public decimal Amount { get; set; }
     public bool Success { get; set; }
+    /// <summary>True when payment has been initiated but confirmation is still pending</summary>
+    public bool IsPending { get; set; }
     public string Message { get; set; }
 }
