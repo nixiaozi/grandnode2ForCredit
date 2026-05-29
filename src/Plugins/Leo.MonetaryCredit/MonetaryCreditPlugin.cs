@@ -1,7 +1,9 @@
 using Grand.Business.Core.Interfaces.Common.Configuration;
 using Grand.Business.Core.Interfaces.Common.Localization;
+using Grand.Business.Core.Interfaces.System.ScheduleTasks;
 using Grand.Infrastructure.Plugins;
 using Leo.MonetaryCredit.Domain;
+using Leo.MonetaryCredit.Infrastructure.Tasks;
 using Leo.MonetaryCredit.Services;
 
 namespace Leo.MonetaryCredit;
@@ -11,7 +13,8 @@ namespace Leo.MonetaryCredit;
 /// </summary>
 public class MonetaryCreditPlugin(
     ISettingService settingService,
-    IPluginTranslateResource pluginTranslateResource)
+    IPluginTranslateResource pluginTranslateResource,
+    IScheduleTaskService scheduleTaskService)
     : BasePlugin, IPlugin
 {
     public override string ConfigurationUrl()
@@ -76,6 +79,19 @@ public class MonetaryCreditPlugin(
         await pluginTranslateResource.AddOrUpdatePluginTranslateResource(
             "Plugins.MonetaryCredit.TotalRecharged", "累计充值");
 
+        // Register the daily "release pending credits" scheduled task in the database
+        var existingTask = await scheduleTaskService.GetTaskByName(ReleasePendingCreditsTask.TaskName);
+        if (existingTask == null)
+        {
+            await scheduleTaskService.InsertTask(new Grand.Domain.Tasks.ScheduleTask
+            {
+                ScheduleTaskName = ReleasePendingCreditsTask.TaskName,
+                Enabled = true,
+                StopOnError = false,
+                TimeInterval = 1440  // run once per day (minutes)
+            });
+        }
+
         await base.Install();
     }
 
@@ -114,6 +130,11 @@ public class MonetaryCreditPlugin(
         {
             await pluginTranslateResource.DeletePluginTranslationResource(key);
         }
+
+        // Remove the scheduled task from database
+        var task = await scheduleTaskService.GetTaskByName(ReleasePendingCreditsTask.TaskName);
+        if (task != null)
+            await scheduleTaskService.DeleteTask(task);
 
         await base.Uninstall();
     }

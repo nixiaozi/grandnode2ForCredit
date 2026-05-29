@@ -194,7 +194,8 @@ public class MonetaryCreditController(
 
         try
         {
-            return RedirectToAction("RechargeReturn", new { orderId});
+            var redirectUrl = await rechargePaymentService.CreatePaymentAndRedirectAsync(orderId, paymentMethodSystemName);
+            return Redirect(redirectUrl);
         }
         catch (Exception ex)
         {

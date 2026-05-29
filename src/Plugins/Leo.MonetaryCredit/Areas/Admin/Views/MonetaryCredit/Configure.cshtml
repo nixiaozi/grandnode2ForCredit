@@ -57,6 +57,39 @@
                     <span asp-validation-for="DisplayOrder"></span>
                 </div>
             </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <label class="control-label">购物积分比例</label>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="ShoppingCreditRate"/>
+                    <span asp-validation-for="ShoppingCreditRate"></span>
+                    <span class="help-block">买家每支付 1 元可获得的购物积分（元）。例如 0.05 表示 5%，即支付 100 元得 5 元积分。0 表示不发放购物积分。</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <label class="control-label">销售积分比例</label>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="SalesCreditRate"/>
+                    <span asp-validation-for="SalesCreditRate"></span>
+                    <span class="help-block">卖家每收到 1 元销售款可获得的销售积分（元）。例如 0.03 表示 3%。0 表示不发放销售积分。</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-3 col-sm-3 text-right">
+                    <label class="control-label">退货保留天数</label>
+                </div>
+                <div class="col-md-9 col-sm-9">
+                    <admin-input asp-for="ReturnWindowDays"/>
+                    <span asp-validation-for="ReturnWindowDays"></span>
+                    <span class="help-block">
+                        购物积分和销售积分在订单支付后将冻结此处指定的天数，到期后自动发放。若订单在此期间取消/退货，积分将作废。
+                        设为 <strong>0</strong> 则支付后立即发放积分（不设冻结期）。默认 7 天。
+                    </span>
+                </div>
+            </div>
         </div>
         <div class="form-actions">
             <div class="row">

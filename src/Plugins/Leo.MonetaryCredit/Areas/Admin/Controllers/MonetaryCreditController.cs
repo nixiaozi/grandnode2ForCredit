@@ -39,7 +39,10 @@ public class MonetaryCreditController(
             DescriptionText = settings.DescriptionText,
             MaxRechargeAmount = settings.MaxRechargeAmount,
             TransactionFeeRate = settings.TransactionFeeRate,
-            SkipPaymentInfo = settings.SkipPaymentInfo
+            SkipPaymentInfo = settings.SkipPaymentInfo,
+            ReturnWindowDays = settings.ReturnWindowDays,
+            ShoppingCreditRate = settings.ShoppingCreditRate,
+            SalesCreditRate = settings.SalesCreditRate
         };
 
         return View(model);
@@ -55,6 +58,9 @@ public class MonetaryCreditController(
         settings.MaxRechargeAmount = model.MaxRechargeAmount;
         settings.TransactionFeeRate = model.TransactionFeeRate;
         settings.SkipPaymentInfo = model.SkipPaymentInfo;
+        settings.ReturnWindowDays = model.ReturnWindowDays;
+        settings.ShoppingCreditRate = model.ShoppingCreditRate;
+        settings.SalesCreditRate = model.SalesCreditRate;
 
         await settingService.SaveSetting(settings);
 
