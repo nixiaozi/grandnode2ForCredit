@@ -180,6 +180,9 @@ public class MonetaryCreditController(
 
     /// <summary>
     ///     Step 3: Redirect to selected payment gateway
+    ///     Instead of directly redirecting to the gateway, we navigate to the RechargeReturn
+    ///     pending page and pass the gateway URL. The page will auto-redirect the user to the
+    ///     gateway, then poll for the result once the user returns.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> RechargeRedirect(string orderId, string paymentMethodSystemName)
@@ -194,8 +197,16 @@ public class MonetaryCreditController(
 
         try
         {
-            var redirectUrl = await rechargePaymentService.CreatePaymentAndRedirectAsync(orderId, paymentMethodSystemName);
-            return Redirect(redirectUrl);
+            var result = await rechargePaymentService.CreatePaymentAndRedirectAsync(orderId, paymentMethodSystemName);
+
+            // Always go to the pending/polling page.
+            // If a payment gateway URL exists, the page will auto-redirect the user there first;
+            // after they return (no paymentUrl in query-string), polling kicks in.
+            return RedirectToAction("RechargeReturn", new
+            {
+                orderId,
+                paymentUrl = result.HasRedirectUrl ? result.RedirectUrl : null
+            });
         }
         catch (Exception ex)
         {
@@ -207,9 +218,11 @@ public class MonetaryCreditController(
 
     /// <summary>
     ///     Step 4: Payment return page - user is redirected here after payment
-    ///     Returns a "pending" page that polls via JS until status is confirmed
+    ///     Two modes:
+    ///     (a) paymentUrl is present → show a brief "redirecting to payment..." page that JS auto-redirects to the gateway.
+    ///     (b) paymentUrl is absent  → user has returned from gateway; show loading and JS-poll for status.
     /// </summary>
-    public async Task<IActionResult> RechargeReturn(string orderId, bool? success, string? message)
+    public async Task<IActionResult> RechargeReturn(string orderId, bool? success, string? message, string? paymentUrl)
     {
         var order = await rechargeService.GetRechargeOrderAsync(orderId);
         if (order == null)
@@ -222,6 +235,23 @@ public class MonetaryCreditController(
             Success = false,
             IsPending = false
         };
+
+        // ------------------------------------------------------------------
+        // Mode (a): We have a gateway URL — show "redirecting" page.
+        //           The user has NOT paid yet; JS will send them to the gateway.
+        // ------------------------------------------------------------------
+        if (!string.IsNullOrWhiteSpace(paymentUrl))
+        {
+            model.IsPending = true;
+            model.PaymentUrl = paymentUrl;
+            model.Message = "正在跳转到支付页面，请稍候...";
+            return View(model);
+        }
+
+        // ------------------------------------------------------------------
+        // Mode (b): No gateway URL — user returned from gateway (or method
+        //           needs no redirect, e.g. COD). Poll virtual order status.
+        // ------------------------------------------------------------------
 
         // If already completed by webhook before user lands here
         if (order.Status == RechargeStatus.AdminApproved)
@@ -238,10 +268,9 @@ public class MonetaryCreditController(
             return View(model);
         }
 
-        // Still waiting for payment callback — let JS poll
+        // Still waiting for payment callback — try one immediate check on the virtual order
         if (order.Status == RechargeStatus.WaitingPayment)
         {
-            // Try one immediate check on the virtual order
             if (!string.IsNullOrEmpty(order.VirtualOrderId))
             {
                 try
@@ -337,4 +366,10 @@ public class RechargeReturnViewModel
     /// <summary>True when payment has been initiated but confirmation is still pending</summary>
     public bool IsPending { get; set; }
     public string Message { get; set; }
+    /// <summary>
+    ///     External payment gateway URL.
+    ///     When set, the page should auto-redirect the user to this URL to complete payment.
+    ///     After returning from the gateway the URL will be empty and JS polling begins.
+    /// </summary>
+    public string PaymentUrl { get; set; }
 }

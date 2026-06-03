@@ -20,32 +20,50 @@
 
             @if (Model.IsPending)
             {
-                <!-- Pending: show loading spinner, JS will update this block -->
-                <div id="result-pending">
-                    <div style="font-size: 4em; color: #ffc107; margin-bottom: 15px;">
-                        <i class="fa fa-spinner fa-spin"></i>
+                @if (!string.IsNullOrEmpty(Model.PaymentUrl))
+                {
+                    <!-- Mode (a): Redirect user to payment gateway -->
+                    <div id="result-redirecting">
+                        <div style="font-size: 4em; color: #17a2b8; margin-bottom: 15px;">
+                            <i class="fa fa-external-link"></i>
+                        </div>
+                        <h2 style="color: #17a2b8;">正在跳转支付页面</h2>
+                        <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
+                        <p id="redirect-message" class="text-muted">@Model.Message</p>
+                        <p class="text-muted" style="font-size: 0.85em;">页面即将自动跳转，如未跳转请
+                            <a href="@Model.PaymentUrl" id="manual-redirect-link">点击此处</a>
+                        </p>
                     </div>
-                    <h2 style="color: #856404;">正在确认支付</h2>
-                    <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
-                    <p id="pending-message" class="text-muted">@Model.Message</p>
-                    <p class="text-muted" style="font-size: 0.85em;">支付确认中，请勿关闭此页面...</p>
-                </div>
-                <div id="result-success" style="display:none;">
-                    <div style="font-size: 4em; color: #28a745; margin-bottom: 15px;">
-                        <i class="fa fa-check-circle"></i>
+                }
+                else
+                {
+                    <!-- Mode (b): User returned from gateway; polling for confirmation -->
+                    <div id="result-pending">
+                        <div style="font-size: 4em; color: #ffc107; margin-bottom: 15px;">
+                            <i class="fa fa-spinner fa-spin"></i>
+                        </div>
+                        <h2 style="color: #856404;">正在确认支付</h2>
+                        <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
+                        <p id="pending-message" class="text-muted">@Model.Message</p>
+                        <p class="text-muted" style="font-size: 0.85em;">支付确认中，请勿关闭此页面...</p>
                     </div>
-                    <h2 style="color: #28a745;">充值成功</h2>
-                    <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
-                    <p>您的账户余额已更新！</p>
-                </div>
-                <div id="result-failed" style="display:none;">
-                    <div style="font-size: 4em; color: #dc3545; margin-bottom: 15px;">
-                        <i class="fa fa-times-circle"></i>
+                    <div id="result-success" style="display:none;">
+                        <div style="font-size: 4em; color: #28a745; margin-bottom: 15px;">
+                            <i class="fa fa-check-circle"></i>
+                        </div>
+                        <h2 style="color: #28a745;">充值成功</h2>
+                        <p class="text-muted">充值金额：<strong style="color: #e7505a;">¥ @Model.Amount.ToString("F2")</strong></p>
+                        <p>您的账户余额已更新！</p>
                     </div>
-                    <h2 style="color: #dc3545;">充值未完成</h2>
-                    <p class="text-muted">充值金额：<strong>¥ @Model.Amount.ToString("F2")</strong></p>
-                    <p id="failed-message"></p>
-                </div>
+                    <div id="result-failed" style="display:none;">
+                        <div style="font-size: 4em; color: #dc3545; margin-bottom: 15px;">
+                            <i class="fa fa-times-circle"></i>
+                        </div>
+                        <h2 style="color: #dc3545;">充值未完成</h2>
+                        <p class="text-muted">充值金额：<strong>¥ @Model.Amount.ToString("F2")</strong></p>
+                        <p id="failed-message"></p>
+                    </div>
+                }
             }
             else if (Model.Success)
             {
@@ -79,6 +97,24 @@
     <script asp-location="Footer" asp-order="300">
         (function () {
             var orderId = '@Html.Raw(Model.OrderId)';
+            var paymentUrl = '@Html.Raw(Model.PaymentUrl ?? "")';
+
+            // -------------------------------------------------------------------
+            // Mode (a): We have a gateway URL — redirect the user immediately.
+            //           After they pay and return, they'll land back on this page
+            //           without a paymentUrl and Mode (b) polling will take over.
+            // -------------------------------------------------------------------
+            if (paymentUrl) {
+                // Short delay so the user can see the "redirecting" message
+                setTimeout(function () {
+                    window.location.href = paymentUrl;
+                }, 1500);
+                return; // nothing else to do
+            }
+
+            // -------------------------------------------------------------------
+            // Mode (b): No gateway URL — poll the server for payment confirmation.
+            // -------------------------------------------------------------------
             var pollUrl = '/MonetaryCredit/RechargeStatusCheck/' + encodeURIComponent(orderId);
             var maxAttempts = 30;   // 30 × 3s = 90s max wait
             var interval = 3000;

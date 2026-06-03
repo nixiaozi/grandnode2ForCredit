@@ -47,7 +47,7 @@ public class RechargePaymentService(
         return models;
     }
 
-    public async Task<string> CreatePaymentAndRedirectAsync(string rechargeOrderId, string paymentMethodSystemName)
+    public async Task<RechargePaymentResult> CreatePaymentAndRedirectAsync(string rechargeOrderId, string paymentMethodSystemName)
     {
         var rechargeOrder = await rechargeService.GetRechargeOrderAsync(rechargeOrderId)
             ?? throw new FileNotFoundException($"充值订单 {rechargeOrderId} 不存在");
@@ -117,6 +117,10 @@ public class RechargePaymentService(
 
         // Get redirect URL from the payment provider
         var redirectUrl = await paymentService.PostRedirectPayment(paymentTransaction);
-        return redirectUrl;
+        return new RechargePaymentResult
+        {
+            RechargeOrderId = rechargeOrderId,
+            RedirectUrl = redirectUrl
+        };
     }
 }
