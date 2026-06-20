@@ -1,6 +1,7 @@
 using Grand.Business.Core.Interfaces.Checkout.Payments;
 using Grand.Business.Core.Interfaces.Cms;
 using Grand.Business.Core.Interfaces.System.ScheduleTasks;
+using Grand.Data;
 using Grand.Infrastructure;
 using Grand.Web.Common.Menu;
 using Leo.MonetaryCredit.Infrastructure.Tasks;
@@ -62,21 +63,24 @@ public class StartupApplication : IStartupApplication
         Console.WriteLine("Configuring Leo.MonetaryCredit plugin...");
 
 
-        // application.Services.GetKeyedService(ReleasePendingCreditsTask.TaskName);
-        IScheduleTaskService scheduleTaskService = (IScheduleTaskService)application.Services.GetService(typeof(IScheduleTaskService));
-
-        var existingTask = scheduleTaskService.GetTaskByName(ReleasePendingCreditsTask.TaskName);
-        existingTask.Wait();
-        if (existingTask.Result == null)
+        if (DataSettingsManager.DatabaseIsInstalled())
         {
-            var addtask = scheduleTaskService.InsertTask(new Grand.Domain.Tasks.ScheduleTask {
-                ScheduleTaskName = ReleasePendingCreditsTask.TaskName,
-                Enabled = true,
-                StopOnError = false,
-                TimeInterval = 1440  // run once per day (minutes)
-            });
+            // application.Services.GetKeyedService(ReleasePendingCreditsTask.TaskName);
+            IScheduleTaskService scheduleTaskService = (IScheduleTaskService)application.Services.GetService(typeof(IScheduleTaskService));
 
-            addtask.Wait();
+            var existingTask = scheduleTaskService.GetTaskByName(ReleasePendingCreditsTask.TaskName);
+            existingTask.Wait();
+            if (existingTask.Result == null)
+            {
+                var addtask = scheduleTaskService.InsertTask(new Grand.Domain.Tasks.ScheduleTask {
+                    ScheduleTaskName = ReleasePendingCreditsTask.TaskName,
+                    Enabled = true,
+                    StopOnError = false,
+                    TimeInterval = 1440  // run once per day (minutes)
+                });
+
+                addtask.Wait();
+            }
         }
 
     }

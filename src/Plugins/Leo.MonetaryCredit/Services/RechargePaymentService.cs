@@ -59,9 +59,14 @@ public class RechargePaymentService(
         var store = contextAccessor.StoreContext.CurrentStore;
         var currency = contextAccessor.WorkContext.WorkingCurrency;
 
-        // Create a virtual Order for payment gateway integration
-        var virtualOrder = new Order
-        {
+        // Create a virtual Order for payment gateway integration.
+        // Notes:
+        //   - OrderStatusId MUST be a value that exists in the OrderStatus collection.
+        //     (int)OrderStatusSystem.Pending = 10, which is always seeded by the platform.
+        //     Using a raw literal like 1 causes "Cannot load order status" errors in the admin panel.
+        //   - CustomerCurrencyCode must match a Currency record so that PrepareOrderDetailsModel
+        //     can call GetCurrencyByCode without throwing "Cannot load order currency".
+        var virtualOrder = new Order {
             OrderGuid = Guid.NewGuid(),
             StoreId = store.Id,
             CustomerId = customer.Id,
@@ -69,7 +74,7 @@ public class RechargePaymentService(
             CustomerCurrencyCode = currency.CurrencyCode,
             CurrencyRate = currency.Rate,
             PaymentMethodSystemName = paymentMethodSystemName,
-            OrderStatusId = (int)1,
+            OrderStatusId = (int)OrderStatusSystem.Pending,   // 10 — always exists in OrderStatus table
             PaymentStatusId = PaymentStatus.Pending,
             ShippingStatusId = ShippingStatus.ShippingNotRequired,
             OrderSubtotalInclTax = (double)rechargeOrder.Amount,
@@ -85,6 +90,7 @@ public class RechargePaymentService(
             Deleted = false,
             CreatedOnUtc = DateTime.UtcNow,
             CheckoutAttributeDescription = "RechargeOrder:" + rechargeOrderId,
+            BillingAddress = contextAccessor.WorkContext.CurrentCustomer.BillingAddress,
         };
 
         await orderService.InsertOrder(virtualOrder);
